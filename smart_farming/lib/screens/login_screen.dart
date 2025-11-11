@@ -1,6 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import 'plant_selection_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -12,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _authService = AuthService();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -19,17 +19,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
     try {
-      UserCredential cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      final cred = await _authService.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
       );
 
-      var farmDoc = await FirebaseFirestore.instance
-          .collection('farms')
-          .doc(cred.user!.uid)
-          .get();
+      final hasFarm = await _authService.hasFarmData(cred.user!.uid);
 
-      if (farmDoc.exists) {
+      if (hasFarm) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -44,10 +41,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Login gagal")),
-      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -74,10 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (_isLoading)
               const CircularProgressIndicator()
             else
-              ElevatedButton(
-                onPressed: _signIn,
-                child: const Text('Login'),
-              ),
+              ElevatedButton(onPressed: _signIn, child: const Text('Login')),
           ],
         ),
       ),
