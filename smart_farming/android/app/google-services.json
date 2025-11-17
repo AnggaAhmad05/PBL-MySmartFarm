@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "744770451817",
+    "project_id": "smartfarming-a2834",
+    "storage_bucket": "smartfarming-a2834.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744770451817:android:34d5a5d250a4582e55e5f8",
+        "android_client_info": {
+          "package_name": "com.example.smart_farming"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDK6LPxkmpFtW7VFD1PzRrtOrQbNSQSrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744770451817:android:6649026c514c7ba955e5f8",
+        "android_client_info": {
+          "package_name": "com.example.smart_farming_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDK6LPxkmpFtW7VFD1PzRrtOrQbNSQSrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
