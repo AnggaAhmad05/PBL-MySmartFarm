@@ -3,10 +3,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; 
 import 'screens/login_screen.dart';
 
+
+// panggil login_screen.dart
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  //  inisialisasi Firebase dengan konfigurasi dari firebase_options.dart
+  // Inisialisasi Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -22,8 +25,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Smart Farming',
       theme: ThemeData(primarySwatch: Colors.green),
-      home: const LoginScreen(),
-      debugShowCheckedModeBanner: false, // optional biar tampilan lebih bersih
+      debugShowCheckedModeBanner: false,
+      home: const LoginScreen(),   // halaman pertama
     );
   }
 }

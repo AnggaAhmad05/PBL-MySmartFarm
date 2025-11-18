@@ -403,7 +403,7 @@ class _NavItem extends StatelessWidget {
   final bool active;
 
   const _NavItem(
-      {required this.icon, required this.label, this.active = false, super.key});
+      {required this.icon, required this.label, this.active = false});
 
   @override
   Widget build(BuildContext context) {
