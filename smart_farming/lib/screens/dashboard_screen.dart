@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'tanamanku_screen.dart';
+import 'smart_control_screen.dart'; // ➜ Tambahan untuk halaman fitur baru
 
 class DashboardScreen extends StatelessWidget {
   final String uid;
@@ -20,7 +22,6 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Waktu
               const SizedBox(height: 10),
               const Text(
                 "07:25",
@@ -28,7 +29,6 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Greeting
               const Text(
                 "Halo,",
                 style: TextStyle(fontSize: 20, color: Colors.black54),
@@ -61,7 +61,6 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // Text
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,7 +77,14 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const TanamankuScreen()),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.green,
@@ -94,7 +100,6 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
 
-                    // Icon bulat
                     Container(
                       width: 60,
                       height: 60,
@@ -111,7 +116,6 @@ class DashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              // Data Sensor Title
               const Text(
                 "Data Sensor Utama",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -122,7 +126,6 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-              // Kelembaban Tanah
               _sensorCard(
                 icon: Icons.water_drop,
                 title: "Kelembaban Tanah",
@@ -134,7 +137,6 @@ class DashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // Row suhu & cahaya
               Row(
                 children: [
                   Expanded(
@@ -153,7 +155,7 @@ class DashboardScreen extends StatelessWidget {
                       range: "600 – 900 lux",
                       value: "740 lux",
                       icon: Icons.wb_sunny,
-                      iconColor: Colors.yellow.shade700,
+                      iconColor: Colors.yellow,
                     ),
                   ),
                 ],
@@ -161,7 +163,6 @@ class DashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              // Jadwal Hari Ini
               const Text(
                 "Jadwal Hari Ini",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -189,7 +190,6 @@ class DashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              // q Cepat
               const Text(
                 "Kontrol Cepat",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -222,11 +222,37 @@ class DashboardScreen extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            _NavItem(icon: Icons.home, label: "Beranda", active: true),
-            _NavItem(icon: Icons.grass, label: "Tanamanku"),
+          children: [
+            _NavItem(
+              icon: Icons.home,
+              label: "Beranda",
+              active: true,
+              onTap: () {},
+            ),
+            _NavItem(
+              icon: Icons.grass,
+              label: "Tanamanku",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TanamankuScreen()),
+                );
+              },
+            ),
             _NavItem(icon: Icons.store, label: "Market"),
-            _NavItem(icon: Icons.people, label: "Komunitas"),
+
+            /// 🔥 MODIFIKASI DI SINI
+            _NavItem(
+              icon: Icons.settings_remote,
+              label: "Smart Control",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SmartControlScreen()),
+                );
+              },
+            ),
+
             _NavItem(icon: Icons.person, label: "Profil"),
           ],
         ),
@@ -401,20 +427,28 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final VoidCallback? onTap;
 
-  const _NavItem(
-      {required this.icon, required this.label, this.active = false});
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    this.active = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: active ? Colors.green : Colors.grey),
-        Text(label,
-            style: TextStyle(
-                color: active ? Colors.green : Colors.grey, fontSize: 12)),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: active ? Colors.green : Colors.grey),
+          Text(label,
+              style: TextStyle(
+                  color: active ? Colors.green : Colors.grey, fontSize: 12)),
+        ],
+      ),
     );
   }
 }
