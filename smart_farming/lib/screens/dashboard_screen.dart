@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'tanamanku_screen.dart';
-import 'smart_control_screen.dart'; // ➜ Tambahan untuk halaman fitur baru
+import 'smart_control_screen.dart';
+import 'data_historis_screen.dart';
+import 'settings_screen.dart';
+import 'device_management_screen.dart';
+import 'notification_history_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final String uid;
@@ -81,8 +85,7 @@ class DashboardScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        const TanamankuScreen()),
+                                    builder: (_) => const TanamankuScreen()),
                               );
                             },
                             style: ElevatedButton.styleFrom(
@@ -99,7 +102,6 @@ class DashboardScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-
                     Container(
                       width: 60,
                       height: 60,
@@ -208,12 +210,99 @@ class DashboardScreen extends StatelessWidget {
                 value: false,
               ),
 
+              // ========================================
+              // 🔥 BAGIAN BARU - MENU TAMBAHAN
+              // ========================================
+              const SizedBox(height: 25),
+
+              const Text(
+                "Menu Fitur",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+
+              // Baris 1: Data Historis & Pengaturan
+              Row(
+                children: [
+                  Expanded(
+                    child: _menuCard(
+                      context,
+                      icon: Icons.bar_chart,
+                      title: "Data Historis",
+                      color: Colors.blue,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => DataHistorisScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _menuCard(
+                      context,
+                      icon: Icons.settings,
+                      title: "Pengaturan",
+                      color: Colors.purple,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => SettingsScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Baris 2: Manajemen Perangkat & Notifikasi
+              Row(
+                children: [
+                  Expanded(
+                    child: _menuCard(
+                      context,
+                      icon: Icons.devices_other,
+                      title: "Manajemen\nPerangkat",
+                      color: Colors.orange,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => DeviceManagementScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _menuCard(
+                      context,
+                      icon: Icons.notifications_active,
+                      title: "Riwayat\nNotifikasi",
+                      color: Colors.red,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  NotificationHistoryScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 80),
             ],
           ),
         ),
       ),
-
       bottomNavigationBar: Container(
         height: 70,
         decoration: BoxDecoration(
@@ -240,19 +329,17 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
             _NavItem(icon: Icons.store, label: "Market"),
-
-            /// 🔥 MODIFIKASI DI SINI
             _NavItem(
               icon: Icons.settings_remote,
               label: "Smart Control",
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SmartControlScreen()),
+                  MaterialPageRoute(
+                      builder: (_) => const SmartControlScreen()),
                 );
               },
             ),
-
             _NavItem(icon: Icons.person, label: "Profil"),
           ],
         ),
@@ -328,7 +415,8 @@ Widget _sensorMiniCard({
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text(range, style: const TextStyle(fontSize: 12)),
               ],
             ),
@@ -419,6 +507,49 @@ Widget _toggleTile({
           onChanged: (_) {},
         ),
       ],
+    ),
+  );
+}
+
+// 🔥 WIDGET BARU UNTUK MENU CARD
+Widget _menuCard(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 30),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+            maxLines: 2,
+          ),
+        ],
+      ),
     ),
   );
 }
