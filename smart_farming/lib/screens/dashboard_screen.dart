@@ -6,6 +6,7 @@ import 'data_historis_screen.dart';
 import 'settings_screen.dart';
 import 'device_management_screen.dart';
 import 'notification_history_screen.dart';
+import 'profile_page_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final String uid;
@@ -340,7 +341,16 @@ class DashboardScreen extends StatelessWidget {
                 );
               },
             ),
-            _NavItem(icon: Icons.person, label: "Profil"),
+             _NavItem(
+              icon: Icons.person,
+              label: "Profil",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfilePage()),
+                  );
+                },
+              ),
           ],
         ),
       ),
