@@ -1,6 +1,7 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart';
+import '../dashboard/dashboard_screen.dart';
 
 class PlantSelectionScreen extends StatelessWidget {
   final String uid;

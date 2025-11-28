@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
-import 'login_screen.dart';
+import '../../services/auth_service.dart';
+import '../auth/login_screen.dart';
+
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});

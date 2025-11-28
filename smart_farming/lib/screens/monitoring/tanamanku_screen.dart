@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../detail/detail_tanamanku_page.dart';
+import '../../detail/detail_tanamanku_page.dart';
+
 
 class TanamankuScreen extends StatelessWidget {
   const TanamankuScreen({super.key});
