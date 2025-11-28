@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 class DetailTanamankuPage extends StatefulWidget {
-  const DetailTanamankuPage({super.key});
+  final String varietas; // <-- DITAMBAHKAN
+
+  const DetailTanamankuPage({
+    super.key,
+    required this.varietas, // <-- WAJIB
+  });
 
   @override
   State<DetailTanamankuPage> createState() => _DetailTanamankuPageState();
@@ -25,9 +30,9 @@ class _DetailTanamankuPageState extends State<DetailTanamankuPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xffF5FAF6),
         elevation: 0,
-        title: const Text(
-          "Detail Tanaman",
-          style: TextStyle(color: Colors.black),
+        title: Text(
+          "Detail ${widget.varietas}",   // <-- DIUBAH SESUAI VARIETAS
+          style: const TextStyle(color: Colors.black),
         ),
         centerTitle: true,
       ),
@@ -53,9 +58,10 @@ class _DetailTanamankuPageState extends State<DetailTanamankuPage> {
 
             const SizedBox(height: 20),
 
-            const Text(
-              "Melon Greenhouse",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            // ==== NAMA VARIETAS ====
+            Text(
+              widget.varietas,    // <-- MENAMPILKAN VARIETAS
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const Text(
               "Pertumbuhan 65% · Perkiraan panen 21 hari lagi",
@@ -119,7 +125,6 @@ class _DetailTanamankuPageState extends State<DetailTanamankuPage> {
             ),
 
             const SizedBox(height: 40),
-
           ],
         ),
       ),

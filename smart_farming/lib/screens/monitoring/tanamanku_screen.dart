@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../detail/detail_tanamanku_page.dart';
 
-
 class TanamankuScreen extends StatelessWidget {
   const TanamankuScreen({super.key});
 
@@ -25,6 +24,29 @@ class TanamankuScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // ==========================================================
+            // === VARIETAS MELON ======================================
+            // ==========================================================
+            const Text(
+              "Pilih Varietas Melon",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 15),
+
+            _varietasItem(context, "Melon Madu", "Varietas manis & populer", Colors.yellowAccent),
+            const SizedBox(height: 10),
+
+            _varietasItem(context, "Melon Hijau", "Segar & renyah", Colors.greenAccent),
+            const SizedBox(height: 10),
+
+            _varietasItem(context, "Melon Golden", "Kulit kuning cerah", Colors.orangeAccent),
+            const SizedBox(height: 10),
+
+            _varietasItem(context, "Melon Kirin", "Aroma kuat & premium", Colors.tealAccent),
+
+            const SizedBox(height: 30),
 
             // === GREENHOUSE CARD ===
             Container(
@@ -50,9 +72,9 @@ class TanamankuScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _infoChip("Kelembaban", "57%", Colors.green.shade100),
-                      _infoChip("Suhu", "29°C", Colors.orange.shade100),
-                      _infoChip("Nutrisi", "Cukup", Colors.blue.shade100),
+                      _infoChip("Kelembaban", "57%", Colors.greenAccent),
+                      _infoChip("Suhu", "29°C", Colors.orangeAccent),
+                      _infoChip("Nutrisi", "Cukup", Colors.blueAccent),
                     ],
                   )
                 ],
@@ -104,7 +126,7 @@ class TanamankuScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const DetailTanamankuPage(),
+                      builder: (_) => const DetailTanamankuPage(varietas: "Default"),
                     ),
                   );
                 },
@@ -130,7 +152,45 @@ class TanamankuScreen extends StatelessWidget {
     );
   }
 
-  // === CHIP ===
+  // ==========================================================
+  // WIDGET VARIETAS
+  // ==========================================================
+  Widget _varietasItem(BuildContext context, String title, String subtitle, Color bg) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailTanamankuPage(varietas: title),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.eco, size: 35, color: Colors.green),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(subtitle, style: const TextStyle(color: Colors.grey)),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // === CHIP KECIL ===
   Widget _infoChip(String label, String value, Color bg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
