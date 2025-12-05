@@ -1,6 +1,5 @@
-// lib/screens/notification_history_screen.dart
-
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class NotificationHistoryScreen extends StatefulWidget {
@@ -11,51 +10,38 @@ class NotificationHistoryScreen extends StatefulWidget {
 }
 
 class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
-  String selectedFilter = 'Semua'; // Semua, Hari Ini, Minggu Ini
+  String selectedFilter = 'Semua'; // Semua, Hari Ini, Minggu Ini, Bulan Ini
+  int selectedMonth = DateTime.now().month;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> notifications = [];
 
-  // DUMMY DATA - ganti dengan Firebase
-  List<Map<String, dynamic>> notifications = [
-    {
-      'id': '1',
-      'type': 'warning',
-      'title': 'Pompa Irigasi Aktif',
-      'message': 'Kelembaban tanah di bawah 40%. Pompa otomatis menyala.',
-      'timestamp': DateTime.now().subtract(const Duration(minutes: 15)),
-      'isRead': false,
-    },
-    {
-      'id': '2',
-      'type': 'info',
-      'title': 'Jadwal Nutrisi',
-      'message': 'Waktunya memberikan nutrisi hidroponik (150ml).',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
-      'isRead': true,
-    },
-    {
-      'id': '3',
-      'type': 'warning',
-      'title': 'Tanah Terlalu Kering',
-      'message': 'Kelembaban tanah: 35%. Segera lakukan penyiraman.',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 5)),
-      'isRead': true,
-    },
-    {
-      'id': '4',
-      'type': 'success',
-      'title': 'Penyiraman Selesai',
-      'message': 'Pompa telah menyiram 20ml air. Kelembaban kembali normal.',
-      'timestamp': DateTime.now().subtract(const Duration(days: 1)),
-      'isRead': true,
-    },
-    {
-      'id': '5',
-      'type': 'warning',
-      'title': 'Suhu Tinggi',
-      'message': 'Suhu mencapai 33°C. Pertimbangkan ventilasi.',
-      'timestamp': DateTime.now().subtract(const Duration(days: 2)),
-      'isRead': true,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .where('createAt',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(
+                  DateTime(DateTime.now().year, selectedMonth, 1)))
+          .where('createAt',
+              isLessThanOrEqualTo: Timestamp.fromDate(
+                  DateTime(DateTime.now().year, selectedMonth + 1, 0)))
+          .orderBy('createAt', descending: true)
+          .get();
+      setState(() {
+        notifications = querySnapshot.docs;
+      });
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +50,8 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F8F3),
       appBar: AppBar(
-        title: const Text("Riwayat Notifikasi", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Riwayat Notifikasi",
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -81,14 +68,21 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                _buildFilterChip('Semua'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Hari Ini'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Minggu Ini'),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('Semua'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Hari Ini'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Minggu Ini'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Bulan Ini'),
+                  const SizedBox(width: 8),
+                  _buildMonthPicker(),
+                ],
+              ),
             ),
           ),
 
@@ -99,11 +93,13 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.notifications_off, size: 80, color: Colors.grey.shade400),
+                        Icon(Icons.notifications_off,
+                            size: 80, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
                           "Tidak ada notifikasi",
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 16),
                         ),
                       ],
                     ),
@@ -125,7 +121,11 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
   Widget _buildFilterChip(String label) {
     final isSelected = selectedFilter == label;
     return GestureDetector(
-      onTap: () => setState(() => selectedFilter = label),
+      onTap: () {
+        setState(() {
+          selectedFilter = label;
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
@@ -143,17 +143,51 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
     );
   }
 
-  Widget _buildNotificationCard(Map<String, dynamic> notif) {
-    final type = notif['type'];
+  Widget _buildMonthPicker() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: DropdownButton<int>(
+        value: selectedMonth,
+        underline: const SizedBox(),
+        items: List.generate(12, (index) => index + 1).map((month) {
+          return DropdownMenuItem<int>(
+            value: month,
+            child: Text(DateFormat('MMM').format(DateTime(2000, month))),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            setState(() {
+              selectedMonth = value;
+              _fetchNotifications();
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(
+      QueryDocumentSnapshot<Map<String, dynamic>> notifDoc) {
+    final notif = notifDoc.data();
+    final docId = notifDoc.id;
+    final type = notif['type'] ?? 'info';
     final icon = _getIconForType(type);
     final color = _getColorForType(type);
-    final isRead = notif['isRead'];
+    final isRead = notif['isRead'] ?? false;
 
     return Dismissible(
-      key: Key(notif['id']),
+      key: Key(docId),
       direction: DismissDirection.endToStart,
       onDismissed: (_) {
-        setState(() => notifications.remove(notif));
+        FirebaseFirestore.instance
+            .collection('notifications')
+            .doc(docId)
+            .delete();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Notifikasi dihapus")),
         );
@@ -169,7 +203,7 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: GestureDetector(
-        onTap: () => _markAsRead(notif),
+        onTap: () => _markAsRead(docId),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -205,9 +239,10 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            notif['title'],
+                            notif['greenhouse_id'] ?? 'Notifikasi',
                             style: TextStyle(
-                              fontWeight: isRead ? FontWeight.w600 : FontWeight.bold,
+                              fontWeight:
+                                  isRead ? FontWeight.w600 : FontWeight.bold,
                               fontSize: 15,
                             ),
                           ),
@@ -225,20 +260,25 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      notif['message'],
+                      notif['message'] ?? '',
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 14,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+                        Icon(Icons.access_time,
+                            size: 14, color: Colors.grey.shade500),
                         const SizedBox(width: 4),
                         Text(
-                          _formatTimestamp(notif['timestamp']),
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                          _formatTimestamp(
+                              (notif['createAt'] as Timestamp).toDate()),
+                          style: TextStyle(
+                              color: Colors.grey.shade500, fontSize: 12),
                         ),
                       ],
                     ),
@@ -258,6 +298,8 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
         return Icons.warning_amber_rounded;
       case 'success':
         return Icons.check_circle;
+      case 'alert':
+        return Icons.error_rounded;
       case 'info':
       default:
         return Icons.info;
@@ -270,6 +312,8 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
         return Colors.orange;
       case 'success':
         return Colors.green;
+      case 'alert':
+        return Colors.red;
       case 'info':
       default:
         return Colors.blue;
@@ -291,25 +335,33 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _getFilteredNotifications() {
+  List<QueryDocumentSnapshot<Map<String, dynamic>>>
+      _getFilteredNotifications() {
     if (selectedFilter == 'Semua') return notifications;
 
     final now = DateTime.now();
-    return notifications.where((notif) {
-      final timestamp = notif['timestamp'] as DateTime;
+    return notifications.where((notifDoc) {
+      final notif = notifDoc.data();
+      final timestamp = (notif['createAt'] as Timestamp).toDate();
+
       if (selectedFilter == 'Hari Ini') {
-        return timestamp.day == now.day && timestamp.month == now.month && timestamp.year == now.year;
+        return timestamp.day == now.day &&
+            timestamp.month == now.month &&
+            timestamp.year == now.year;
       } else if (selectedFilter == 'Minggu Ini') {
         return now.difference(timestamp).inDays < 7;
+      } else if (selectedFilter == 'Bulan Ini') {
+        return timestamp.month == selectedMonth && timestamp.year == now.year;
       }
       return true;
     }).toList();
   }
 
-  void _markAsRead(Map<String, dynamic> notif) {
-    setState(() {
-      notif['isRead'] = true;
-    });
+  void _markAsRead(String docId) {
+    FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(docId)
+        .update({'isRead': true});
   }
 
   void _confirmClearAll() {
@@ -325,11 +377,19 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() => notifications.clear());
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Semua notifikasi dihapus")),
-              );
+              FirebaseFirestore.instance
+                  .collection('notifications')
+                  .get()
+                  .then((querySnapshot) {
+                for (final doc in querySnapshot.docs) {
+                  doc.reference.delete();
+                }
+                setState(() => notifications.clear());
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Semua notifikasi dihapus")),
+                );
+              });
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text("Hapus Semua"),
