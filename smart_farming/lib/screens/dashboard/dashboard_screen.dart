@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math' as math;
 
 import '../monitoring/tanamanku_screen.dart';
 import '../manual_control/smart_control_screen.dart';
@@ -7,9 +8,57 @@ import '../settings/profile_page_screen.dart';
 import '../dashboard/menu_utama_screen.dart';
 import '../notifications/notification_history_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final String uid;
   const DashboardScreen({super.key, required this.uid});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  // Sensor Data
+  double temperature = 28.5;
+  double humidity = 65.2;
+  double soilMoisture = 45;
+  double lightIntensity = 75;
+  String timestamp = '';
+
+  // Historical data for chart
+  List<double> soilHistory = [35, 38, 42, 45, 43, 40, 45];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeTimestamp();
+    _simulateSensorData();
+  }
+
+  void _initializeTimestamp() {
+    final now = DateTime.now();
+    timestamp =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+  }
+
+  void _simulateSensorData() {
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          temperature = 25 + (DateTime.now().millisecond % 100) / 10;
+          humidity = 60 + (DateTime.now().millisecond % 200) / 10;
+          soilMoisture = 30 + (DateTime.now().millisecond % 400) / 10;
+          lightIntensity = 50 + (DateTime.now().millisecond % 500) / 10;
+
+          // Update soil history
+          soilHistory.add(soilMoisture);
+          if (soilHistory.length > 7) soilHistory.removeAt(0);
+
+          _initializeTimestamp();
+        });
+        _simulateSensorData();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +242,7 @@ class DashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 28),
 
-              // ==================== DATA SENSOR ====================
+              // ==================== DATA SENSOR (DINAMIS) ====================
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -202,7 +251,7 @@ class DashboardScreen extends StatelessWidget {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87)),
-                  Text("07.20 WIB",
+                  Text(timestamp,
                       style: TextStyle(
                           color: Colors.grey.shade500,
                           fontSize: 12,
@@ -221,29 +270,103 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   _sensorGridCard(
                       title: "Kelembaban",
-                      value: "57%",
-                      status: "Stabil",
+                      value: "${humidity.toStringAsFixed(1)}%",
+                      status: humidity > 70
+                          ? "Tinggi"
+                          : humidity > 50
+                              ? "Stabil"
+                              : "Rendah",
                       icon: Icons.water_drop,
                       iconColor: const Color(0xFF00B4D8)),
                   _sensorGridCard(
                       title: "Suhu",
-                      value: "29°C",
-                      status: "Normal",
+                      value: "${temperature.toStringAsFixed(1)}°C",
+                      status: temperature > 30
+                          ? "Panas"
+                          : temperature > 25
+                              ? "Normal"
+                              : "Dingin",
                       icon: Icons.thermostat,
                       iconColor: const Color(0xFFFF9500)),
                   _sensorGridCard(
                       title: "Cahaya",
-                      value: "740 lx",
-                      status: "Bagus",
+                      value: "${lightIntensity.toStringAsFixed(0)} lx",
+                      status: lightIntensity > 70 ? "Bagus" : "Kurang",
                       icon: Icons.wb_sunny,
                       iconColor: const Color(0xFFFFB300)),
                   _sensorGridCard(
-                      title: "pH Tanah",
-                      value: "6.5",
-                      status: "Optimal",
+                      title: "Kelembaban Tanah",
+                      value: "${soilMoisture.toStringAsFixed(0)}%",
+                      status: soilMoisture > 60
+                          ? "Basah"
+                          : soilMoisture > 30
+                              ? "Optimal"
+                              : "Kering",
                       icon: Icons.science,
                       iconColor: const Color(0xFF8B5CF6)),
                 ],
+              ),
+
+              const SizedBox(height: 28),
+
+              // ==================== MINI CHART ====================
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '📊 Soil Moisture Trend',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Last 7 updates',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF4CAF50),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 100,
+                      child: CustomPaint(
+                        size: Size(MediaQuery.of(context).size.width - 72, 100),
+                        painter: LineChartPainter(soilHistory),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 30),
@@ -380,7 +503,74 @@ Widget _featureIcon({
       const SizedBox(height: 8),
       Text(label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
-]),
-);
+    ]),
+  );
 }
 
+// ==================== CUSTOM CHART PAINTER ====================
+class LineChartPainter extends CustomPainter {
+  final List<double> data;
+
+  LineChartPainter(this.data);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final paint = Paint()
+      ..color = const Color(0xFF4CAF50)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFF4CAF50).withOpacity(0.3),
+          const Color(0xFF4CAF50).withOpacity(0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path();
+    final fillPath = Path();
+
+    final stepX = size.width / (data.length - 1);
+    final maxValue = data.reduce(math.max);
+    final minValue = data.reduce(math.min);
+    final range = maxValue - minValue;
+
+    for (int i = 0; i < data.length; i++) {
+      final x = i * stepX;
+      final normalizedValue = range > 0 ? (data[i] - minValue) / range : 0.5;
+      final y = size.height - (normalizedValue * size.height * 0.8) - 10;
+
+      if (i == 0) {
+        path.moveTo(x, y);
+        fillPath.moveTo(x, size.height);
+        fillPath.lineTo(x, y);
+      } else {
+        path.lineTo(x, y);
+        fillPath.lineTo(x, y);
+      }
+
+      canvas.drawCircle(
+        Offset(x, y),
+        4,
+        Paint()
+          ..color = const Color(0xFF4CAF50)
+          ..style = PaintingStyle.fill,
+      );
+    }
+
+    fillPath.lineTo(size.width, size.height);
+    fillPath.close();
+
+    canvas.drawPath(fillPath, fillPaint);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
