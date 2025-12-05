@@ -40,7 +40,7 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
       // Ambil data bulanan
       snapshot = await FirebaseFirestore.instance
           .collection('sensor_history')
-          .where('timestamp', isGreaterThan: DateTime.now().subtract(Duration(days: 30)))
+          .where('timestamp', isGreaterThan: DateTime.now().subtract(Duration(days: 31)))
           .get();
     }
 

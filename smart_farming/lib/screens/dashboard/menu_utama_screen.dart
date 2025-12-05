@@ -119,40 +119,6 @@ class MenuUtamaScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // Jadwal Section
-              const Text(
-                "Jadwal Hari Ini",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                "Reminder penyiraman nutrisi melon",
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              _scheduleCard(
-                title: "Water Hidroponik",
-                time: "10 – 20 ml · 09.00 WIB",
-                status: "Belum dilakukan",
-                statusColor: Colors.green,
-              ),
-
-              const SizedBox(height: 10),
-
-              _scheduleCard(
-                title: "Nutrisi Vertikultur",
-                time: "150 – 200 gram · 16.00 WIB",
-                status: "Terjadwal",
-                statusColor: Colors.grey,
-              ),
             ],
           ),
         ),

@@ -6,14 +6,43 @@ import '../manual_control/smart_control_screen.dart';
 import '../settings/profile_page_screen.dart';
 import '../dashboard/menu_utama_screen.dart';
 
-
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final String uid;
   const DashboardScreen({super.key, required this.uid});
 
-  Future<void> _signOut(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.pop(context);
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  double temperature = 0.0;
+  double humidity = 0.0;
+  double soilMoisture = 0.0;
+  double lightIntensity = 0.0;
+
+  double thresholdLow = 30;
+  double thresholdHigh = 60;
+  double minTemperature = 24;
+  double maxTemperature = 30;
+
+  @override
+  void initState() {
+    super.initState();
+    _simulateSensorData();
+  }
+
+  void _simulateSensorData() {
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          soilMoisture = 30 + (DateTime.now().millisecond % 400) / 10;
+          temperature = 25 + (DateTime.now().millisecond % 100) / 10;
+          humidity = 60 + (DateTime.now().millisecond % 200) / 10;
+          lightIntensity = 50 + (DateTime.now().millisecond % 500) / 10;
+        });
+        _simulateSensorData();
+      }
+    });
   }
 
   @override
@@ -131,14 +160,14 @@ class DashboardScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // Data Sensor
+              // Data Sensor Utama
               const Text(
                 "Data Sensor Utama",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
-                "Update terakhir: 07.20 WIB",
+                "Update terakhir: ${TimeOfDay.now().format(context)}",
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -146,9 +175,17 @@ class DashboardScreen extends StatelessWidget {
               _sensorCard(
                 icon: Icons.water_drop,
                 title: "Kelembaban Tanah",
-                value: "57%",
-                status: "Stabil",
-                iconColor: Colors.green,
+                value: "${soilMoisture.toStringAsFixed(0)}%",
+                status: soilMoisture < thresholdLow
+                    ? "Kering"
+                    : soilMoisture > thresholdHigh
+                        ? "Basah"
+                        : "Stabil",
+                iconColor: soilMoisture < thresholdLow
+                    ? Colors.red
+                    : soilMoisture > thresholdHigh
+                        ? Colors.blue
+                        : Colors.green,
               ),
 
               const SizedBox(height: 12),
@@ -158,16 +195,20 @@ class DashboardScreen extends StatelessWidget {
                   Expanded(
                     child: _sensorMiniCard(
                       title: "Suhu",
-                      value: "29°C",
+                      value: "${temperature.toStringAsFixed(1)}°C",
                       icon: Icons.thermostat,
-                      iconColor: Colors.orange,
+                      iconColor: temperature < minTemperature
+                          ? Colors.blue
+                          : temperature > maxTemperature
+                              ? Colors.red
+                              : Colors.orange,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _sensorMiniCard(
                       title: "Cahaya",
-                      value: "740 lux",
+                      value: "${lightIntensity.toStringAsFixed(0)} lux",
                       icon: Icons.wb_sunny,
                       iconColor: Colors.amber,
                     ),
@@ -186,14 +227,26 @@ class DashboardScreen extends StatelessWidget {
 
               _toggleCard(
                 title: "Pompa Air",
-                subtitle: "Aktif otomatis jika kelembaban < 40%",
-                value: true,
+                subtitle: soilMoisture < thresholdLow
+                    ? "Aktif otomatis jika kelembaban < $thresholdLow%"
+                    : "Kontrol manual",
+                value: soilMoisture < thresholdLow,
+                onChanged: (value) {
+                  if (soilMoisture < thresholdLow) {
+                    // Pompa diatur secara otomatis
+                  } else {
+                    // Kontrol manual
+                  }
+                },
               ),
               const SizedBox(height: 10),
               _toggleCard(
                 title: "Lampu Tumbuh",
                 subtitle: "Menyala saat cahaya < 600 lux",
-                value: false,
+                value: lightIntensity < 600,
+                onChanged: (value) {
+                  // Logika untuk mengontrol lampu tumbuh
+                },
               ),
 
               const SizedBox(height: 100),
@@ -203,6 +256,11 @@ class DashboardScreen extends StatelessWidget {
       ),
       bottomNavigationBar: _buildBottomNav(context),
     );
+  }
+
+  Future<void> _signOut(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pop(context);
   }
 
   Widget _buildBottomNav(BuildContext context) {
@@ -215,13 +273,13 @@ class DashboardScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _NavItem(
+          _navItem(
             icon: Icons.home,
             label: "Beranda",
             active: true,
             onTap: () {},
           ),
-          _NavItem(
+          _navItem(
             icon: Icons.grass,
             label: "Tanamanku",
             onTap: () {
@@ -231,7 +289,7 @@ class DashboardScreen extends StatelessWidget {
               );
             },
           ),
-          _NavItem(
+          _navItem(
             icon: Icons.apps,
             label: "Menu",
             onTap: () {
@@ -241,7 +299,7 @@ class DashboardScreen extends StatelessWidget {
               );
             },
           ),
-          _NavItem(
+          _navItem(
             icon: Icons.settings_remote,
             label: "Kontrol",
             onTap: () {
@@ -251,7 +309,7 @@ class DashboardScreen extends StatelessWidget {
               );
             },
           ),
-          _NavItem(
+          _navItem(
             icon: Icons.person,
             label: "Profil",
             onTap: () {
@@ -265,171 +323,13 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-// ============ WIDGET HELPERS ============
-
-Widget _sensorCard({
-  required IconData icon,
-  required String title,
-  required String value,
-  required String status,
-  required Color iconColor,
-}) {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: iconColor, size: 24),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
-          ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              status,
-              style: TextStyle(
-                color: iconColor,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _sensorMiniCard({
-  required String title,
-  required String value,
-  required IconData icon,
-  required Color iconColor,
-}) {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: iconColor, size: 20),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _toggleCard({
-  required String title,
-  required String subtitle,
-  required bool value,
-}) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Switch(
-          value: value,
-          onChanged: (_) {},
-          activeColor: Colors.green,
-        ),
-      ],
-    ),
-  );
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.active = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _navItem({
+    required IconData icon,
+    required String label,
+    bool active = false,
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -447,6 +347,153 @@ class _NavItem extends StatelessWidget {
               color: active ? Colors.green : Colors.grey,
               fontSize: 11,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sensorCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String status,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                status,
+                style: TextStyle(
+                  color: iconColor,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sensorMiniCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleCard({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: Colors.green,
           ),
         ],
       ),
