@@ -1,8 +1,7 @@
-// lib/screens/data_historis_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DataHistorisScreen extends StatefulWidget {
   const DataHistorisScreen({super.key});
@@ -13,18 +12,42 @@ class DataHistorisScreen extends StatefulWidget {
 
 class _DataHistorisScreenState extends State<DataHistorisScreen> {
   String selectedPeriod = 'Hari'; // Hari, Minggu, Bulan
-  String selectedSensor = 'Suhu'; // Suhu, Kelembaban, Cahaya
+  String selectedSensor = 'temperature'; // temperature, humidity, lightIntensity
 
-  // DUMMY DATA - ganti dengan Firebase nanti
-  final List<Map<String, dynamic>> dummyData = [
-    {'time': '00:00', 'value': 26.0},
-    {'time': '04:00', 'value': 25.0},
-    {'time': '08:00', 'value': 28.0},
-    {'time': '12:00', 'value': 31.0},
-    {'time': '16:00', 'value': 29.0},
-    {'time': '20:00', 'value': 27.0},
-    {'time': '23:59', 'value': 26.5},
-  ];
+  List<Map<String, dynamic>> sensorData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchSensorData();
+  }
+
+  Future<void> fetchSensorData() async {
+    QuerySnapshot snapshot;
+    if (selectedPeriod == 'Hari') {
+      // Ambil data harian
+      snapshot = await FirebaseFirestore.instance
+          .collection('sensor_history')
+          .where('timestamp', isGreaterThan: DateTime.now().subtract(Duration(days: 1)))
+          .get();
+    } else if (selectedPeriod == 'Minggu') {
+      // Ambil data mingguan
+      snapshot = await FirebaseFirestore.instance
+          .collection('sensor_history')
+          .where('timestamp', isGreaterThan: DateTime.now().subtract(Duration(days: 7)))
+          .get();
+    } else {
+      // Ambil data bulanan
+      snapshot = await FirebaseFirestore.instance
+          .collection('sensor_history')
+          .where('timestamp', isGreaterThan: DateTime.now().subtract(Duration(days: 30)))
+          .get();
+    }
+
+    setState(() {
+      sensorData = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,11 +83,11 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                _buildSensorChip('Suhu', Icons.thermostat, Colors.orange),
+                _buildSensorChip('temperature', Icons.thermostat, Colors.orange),
                 const SizedBox(width: 8),
-                _buildSensorChip('Kelembaban', Icons.water_drop, Colors.blue),
+                _buildSensorChip('humidity', Icons.water_drop, Colors.blue),
                 const SizedBox(width: 8),
-                _buildSensorChip('Cahaya', Icons.wb_sunny, Colors.yellow),
+                _buildSensorChip('lightIntensity', Icons.wb_sunny, Colors.yellow),
               ],
             ),
 
@@ -81,7 +104,7 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "$selectedSensor - $selectedPeriod Ini",
+                    "${selectedSensor.toUpperCase()} - $selectedPeriod Ini",
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
                   ),
                   Text(
@@ -113,9 +136,9 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
                             sideTitles: SideTitles(
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
-                                if (value.toInt() >= 0 && value.toInt() < dummyData.length) {
+                                if (value.toInt() >= 0 && value.toInt() < sensorData.length) {
                                   return Text(
-                                    dummyData[value.toInt()]['time'],
+                                    DateFormat('HH:mm').format(sensorData[value.toInt()]['timestamp'].toDate()),
                                     style: const TextStyle(fontSize: 10),
                                   );
                                 }
@@ -129,10 +152,13 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
                         borderData: FlBorderData(show: true),
                         lineBarsData: [
                           LineChartBarData(
-                            spots: dummyData
+                            spots: sensorData
                                 .asMap()
                                 .entries
-                                .map((e) => FlSpot(e.key.toDouble(), e.value['value']))
+                                .map((e) {
+                                  double? value = double.tryParse(e.value[selectedSensor].toString());
+                                  return value != null ? FlSpot(e.key.toDouble(), value) : FlSpot(e.key.toDouble(), 0.0);
+                                })
                                 .toList(),
                             isCurved: true,
                             color: _getSensorColor(),
@@ -168,9 +194,9 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatCard("Rata-rata", "27.5°C", Colors.blue),
-                      _buildStatCard("Maksimal", "31.0°C", Colors.red),
-                      _buildStatCard("Minimal", "25.0°C", Colors.green),
+                      _buildStatCard("Rata-rata", "${_calculateAverage().toStringAsFixed(1)}", Colors.blue),
+                      _buildStatCard("Maksimal", "${_calculateMax().toStringAsFixed(1)}", Colors.red),
+                      _buildStatCard("Minimal", "${_calculateMin().toStringAsFixed(1)}", Colors.green),
                     ],
                   ),
                 ],
@@ -185,7 +211,12 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
   Widget _buildPeriodChip(String label) {
     final isSelected = selectedPeriod == label;
     return GestureDetector(
-      onTap: () => setState(() => selectedPeriod = label),
+      onTap: () {
+        setState(() {
+          selectedPeriod = label;
+          fetchSensorData();
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
@@ -206,7 +237,12 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
   Widget _buildSensorChip(String label, IconData icon, Color color) {
     final isSelected = selectedSensor == label;
     return GestureDetector(
-      onTap: () => setState(() => selectedSensor = label),
+      onTap: () {
+        setState(() {
+          selectedSensor = label;
+          fetchSensorData();
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
@@ -219,7 +255,7 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
             Icon(icon, color: color, size: 18),
             const SizedBox(width: 6),
             Text(
-              label,
+              label.toUpperCase(),
               style: TextStyle(
                 color: isSelected ? color : Colors.black,
                 fontWeight: FontWeight.bold,
@@ -250,14 +286,52 @@ class _DataHistorisScreenState extends State<DataHistorisScreen> {
 
   Color _getSensorColor() {
     switch (selectedSensor) {
-      case 'Suhu':
+      case 'temperature':
         return Colors.orange;
-      case 'Kelembaban':
+      case 'humidity':
         return Colors.blue;
-      case 'Cahaya':
+      case 'lightIntensity':
         return Colors.yellow.shade700;
       default:
         return Colors.green;
     }
+  }
+
+  double _calculateAverage() {
+    if (sensorData.isEmpty) return 0.0;
+    double sum = 0.0;
+    int validCount = 0;
+    for (final data in sensorData) {
+      double? value = double.tryParse(data[selectedSensor].toString());
+      if (value != null) {
+        sum += value;
+        validCount++;
+      }
+    }
+    return validCount > 0 ? sum / validCount : 0.0;
+  }
+
+  double _calculateMax() {
+    if (sensorData.isEmpty) return 0.0;
+    double max = double.parse(sensorData[0][selectedSensor].toString());
+    for (final data in sensorData) {
+      double? value = double.tryParse(data[selectedSensor].toString());
+      if (value != null && value > max) {
+        max = value;
+      }
+    }
+    return max;
+  }
+
+  double _calculateMin() {
+    if (sensorData.isEmpty) return 0.0;
+    double min = double.parse(sensorData[0][selectedSensor].toString());
+    for (final data in sensorData) {
+      double? value = double.tryParse(data[selectedSensor].toString());
+      if (value != null && value < min) {
+        min = value;
+      }
+    }
+    return min;
   }
 }
