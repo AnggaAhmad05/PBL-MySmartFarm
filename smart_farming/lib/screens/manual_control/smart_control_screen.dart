@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'dart:math' as math;
 
 class SmartControlScreen extends StatefulWidget {
@@ -8,9 +9,14 @@ class SmartControlScreen extends StatefulWidget {
   State<SmartControlScreen> createState() => _SmartControlScreenState();
 }
 
-// PERBAIKAN: Ganti SingleTickerProviderStateMixin dengan TickerProviderStateMixin
 class _SmartControlScreenState extends State<SmartControlScreen>
-    with TickerProviderStateMixin { // ← UBAH INI (bukan Single lagi)
+    with TickerProviderStateMixin {
+  
+  // ==================== FIREBASE ====================
+  late DatabaseReference _database;
+  bool isConnected = false;
+  String connectionStatus = 'Connecting...';
+  String selectedDeviceId = 'device_001';
   
   // Control Mode
   String controlMode = 'auto';
@@ -21,16 +27,17 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   double thresholdHigh = 60;
   double maxDuration = 300;
   
-  // Sensor Data
-  double temperature = 28.5;
-  double humidity = 65.2;
-  double soilMoisture = 45;
-  double lightIntensity = 75;
+  // Sensor Data (Real-time dari Firebase)
+  double temperature = 0;
+  double humidity = 0;
+  double soilMoisture = 0;
+  double lightIntensity = 0;
+  String lastUpdate = '';
   
   // Historical data for chart
-  List<double> soilHistory = [35, 38, 42, 45, 43, 40, 45];
+  List<double> soilHistory = [];
   
-  // Animation Controllers - PERBAIKAN: Initialize di sini
+  // Animation Controllers
   AnimationController? _animationController;
   Animation<double>? _pulseAnimation;
   
@@ -61,8 +68,277 @@ class _SmartControlScreenState extends State<SmartControlScreen>
     // Start animation
     _animationController!.repeat(reverse: true);
     
-    // Start sensor simulation
-    _simulateSensorData();
+    // ✅ Initialize Firebase
+    _initializeFirebase();
+  }
+  
+  // ==================== FIREBASE INITIALIZATION ====================
+  void _initializeFirebase() {
+    try {
+      _database = FirebaseDatabase.instance.ref();
+      
+      print("✅ Firebase Database initialized");
+      print("✅ Database URL: ${FirebaseDatabase.instance.databaseURL}");
+      
+      // Listen to sensor data
+      _listenToSensorData();
+      
+      // Listen to control settings
+      _listenToControlSettings();
+      
+      // Listen to historical data
+      _loadHistoricalData();
+      
+      if (mounted) {
+        setState(() {
+          isConnected = true;
+          connectionStatus = 'Connected';
+        });
+      }
+    } catch (e) {
+      print("❌ Firebase initialization error: $e");
+      if (mounted) {
+        setState(() {
+          isConnected = false;
+          connectionStatus = 'Connection Error';
+        });
+      }
+    }
+  }
+  
+  // ==================== LISTEN TO SENSOR DATA ====================
+  void _listenToSensorData() {
+    try {
+      _database
+          .child('sensors')
+          .child(selectedDeviceId)
+          .onValue
+          .listen((DatabaseEvent event) {
+        print("📡 Sensor data received");
+        
+        if (event.snapshot.exists) {
+          try {
+            Map<dynamic, dynamic> data = 
+                event.snapshot.value as Map<dynamic, dynamic>;
+            
+            if (mounted) {
+              setState(() {
+                temperature = _parseDouble(data['temperature']) ?? 0;
+                humidity = _parseDouble(data['humidity']) ?? 0;
+                soilMoisture = _parseDouble(data['soilMoisture']) ?? 0;
+                lightIntensity = _parseDouble(data['lightIntensity']) ?? 0;
+                lastUpdate = data['timestamp']?.toString() ?? DateTime.now().toString();
+                
+                // Update soil history
+                if (soilMoisture > 0) {
+                  soilHistory.add(soilMoisture);
+                  if (soilHistory.length > 7) {
+                    soilHistory.removeAt(0);
+                  }
+                }
+                
+                isConnected = true;
+                connectionStatus = 'Connected';
+                
+                print("✅ Sensor data updated: T=$temperature, H=$humidity, S=$soilMoisture");
+              });
+            }
+          } catch (e) {
+            print("❌ Error parsing sensor data: $e");
+          }
+        } else {
+          print("⚠️ No sensor data available");
+        }
+      }, onError: (error) {
+        print("❌ Sensor listener error: $error");
+        if (mounted) {
+          setState(() {
+            isConnected = false;
+            connectionStatus = 'Connection Error';
+          });
+        }
+      });
+    } catch (e) {
+      print("❌ Error setting up sensor listener: $e");
+    }
+  }
+  
+  // ==================== LISTEN TO CONTROL SETTINGS ====================
+  void _listenToControlSettings() {
+    try {
+      _database
+          .child('control')
+          .child(selectedDeviceId)
+          .onValue
+          .listen((DatabaseEvent event) {
+        print("📡 Control settings received");
+        
+        if (event.snapshot.exists) {
+          try {
+            Map<dynamic, dynamic> data = 
+                event.snapshot.value as Map<dynamic, dynamic>;
+            
+            if (mounted) {
+              setState(() {
+                controlMode = data['mode']?.toString() ?? 'auto';
+                pumpManual = data['pumpStatus'] == 'ON' || data['pumpStatus'] == true;
+                thresholdLow = _parseDouble(data['thresholdLow']) ?? 30;
+                thresholdHigh = _parseDouble(data['thresholdHigh']) ?? 60;
+                maxDuration = _parseDouble(data['maxDuration']) ?? 300;
+                
+                print("✅ Control settings updated");
+              });
+            }
+          } catch (e) {
+            print("❌ Error parsing control settings: $e");
+          }
+        }
+      }, onError: (error) {
+        print("❌ Control settings listener error: $error");
+      });
+    } catch (e) {
+      print("❌ Error setting up control listener: $e");
+    }
+  }
+  
+  // ==================== LOAD HISTORICAL DATA ====================
+  void _loadHistoricalData() async {
+    try {
+      DataSnapshot snapshot = 
+          await _database.child('history/sensor_history').get();
+      
+      if (snapshot.exists) {
+        Map<dynamic, dynamic> data = 
+            snapshot.value as Map<dynamic, dynamic>;
+        
+        List<double> tempHistory = [];
+        
+        data.forEach((key, value) {
+          if (value is Map) {
+            Map<String, dynamic> item = Map<String, dynamic>.from(value);
+            
+            if (item['deviceId'] == selectedDeviceId) {
+              double? soil = _parseDouble(item['soilMoisture']);
+              if (soil != null && soil > 0) {
+                tempHistory.add(soil);
+              }
+            }
+          }
+        });
+        
+        if (tempHistory.length > 7) {
+          tempHistory = tempHistory.sublist(tempHistory.length - 7);
+        }
+        
+        if (mounted) {
+          setState(() {
+            soilHistory = tempHistory;
+          });
+        }
+        
+        print("✅ Historical data loaded: ${soilHistory.length} points");
+      }
+    } catch (e) {
+      print("❌ Error loading historical data: $e");
+    }
+  }
+  
+  // ==================== UPDATE CONTROL MODE ====================
+  Future<void> _updateControlMode(String mode) async {
+    try {
+      await _database
+          .child('control')
+          .child(selectedDeviceId)
+          .update({'mode': mode});
+      
+      print("✅ Control mode updated to: $mode");
+      
+      if (mounted) {
+        setState(() => controlMode = mode);
+      }
+    } catch (e) {
+      print("❌ Error updating control mode: $e");
+      _showErrorSnackbar("Failed to update control mode");
+    }
+  }
+  
+  // ==================== UPDATE PUMP STATUS ====================
+  Future<void> _updatePumpStatus(bool status) async {
+    try {
+      await _database
+          .child('control')
+          .child(selectedDeviceId)
+          .update({'pumpStatus': status ? 'ON' : 'OFF'});
+      
+      print("✅ Pump status updated to: ${status ? 'ON' : 'OFF'}");
+      
+      if (mounted) {
+        setState(() => pumpManual = status);
+      }
+    } catch (e) {
+      print("❌ Error updating pump status: $e");
+      _showErrorSnackbar("Failed to update pump status");
+    }
+  }
+  
+  // ==================== UPDATE THRESHOLDS ====================
+  Future<void> _updateThresholds() async {
+    try {
+      await _database
+          .child('control')
+          .child(selectedDeviceId)
+          .update({
+            'thresholdLow': thresholdLow,
+            'thresholdHigh': thresholdHigh,
+            'maxDuration': maxDuration,
+          });
+      
+      print("✅ Thresholds updated");
+      _showSuccessSnackbar("✅ Threshold saved!");
+    } catch (e) {
+      print("❌ Error updating thresholds: $e");
+      _showErrorSnackbar("Failed to save threshold");
+    }
+  }
+  
+  // ==================== HELPER FUNCTIONS ====================
+  double? _parseDouble(dynamic value) {
+    try {
+      if (value == null) return null;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      if (value is num) return value.toDouble();
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+  
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
   }
   
   @override
@@ -70,23 +346,6 @@ class _SmartControlScreenState extends State<SmartControlScreen>
     _tabController?.dispose();
     _animationController?.dispose();
     super.dispose();
-  }
-  
-  void _simulateSensorData() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          temperature = 25 + (DateTime.now().millisecond % 100) / 10;
-          humidity = 60 + (DateTime.now().millisecond % 200) / 10;
-          soilMoisture = 30 + (DateTime.now().millisecond % 400) / 10;
-          lightIntensity = 50 + (DateTime.now().millisecond % 500) / 10;
-          
-          soilHistory.add(soilMoisture);
-          if (soilHistory.length > 7) soilHistory.removeAt(0);
-        });
-        _simulateSensorData();
-      }
-    });
   }
 
   @override
@@ -114,13 +373,13 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                   child: Column(
                     children: [
                       const SizedBox(height: 16),
+                      _buildConnectionStatus(),
+                      const SizedBox(height: 16),
                       _buildSensorGrid(),
                       const SizedBox(height: 16),
                       _buildMiniChart(),
                       const SizedBox(height: 16),
                       _buildTabSection(),
-                      const SizedBox(height: 16),
-                      _buildConnectionStatus(),
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -176,7 +435,6 @@ class _SmartControlScreenState extends State<SmartControlScreen>
               ),
             ],
           ),
-          // PERBAIKAN: Check null
           _pulseAnimation != null
               ? AnimatedBuilder(
                   animation: _pulseAnimation!,
@@ -391,9 +649,9 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                     color: const Color(0xFF4CAF50).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    'Last 7 updates',
-                    style: TextStyle(
+                  child: Text(
+                    'Last ${soilHistory.isEmpty ? 0 : soilHistory.length} updates',
+                    style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF4CAF50),
                       fontWeight: FontWeight.w600,
@@ -405,10 +663,18 @@ class _SmartControlScreenState extends State<SmartControlScreen>
             const SizedBox(height: 20),
             SizedBox(
               height: 100,
-              child: CustomPaint(
-                size: Size(MediaQuery.of(context).size.width - 72, 100),
-                painter: LineChartPainter(soilHistory),
-              ),
+              child: soilHistory.isEmpty
+                  ? Center(
+                      child: Text(
+                        "Waiting for data...",
+                        style: TextStyle(color: Colors.grey[400]),
+                      ),
+                    )
+                  : CustomPaint(
+                      size: Size(
+                          MediaQuery.of(context).size.width - 72, 100),
+                      painter: LineChartPainter(soilHistory),
+                    ),
             ),
           ],
         ),
@@ -418,7 +684,6 @@ class _SmartControlScreenState extends State<SmartControlScreen>
 
   // ==================== TAB SECTION ====================
   Widget _buildTabSection() {
-    // PERBAIKAN: Check null untuk TabController
     if (_tabController == null) {
       return const SizedBox.shrink();
     }
@@ -514,7 +779,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                 child: _buildNeumorphicButton(
                   label: '🤖 Auto',
                   isSelected: controlMode == 'auto',
-                  onTap: () => setState(() => controlMode = 'auto'),
+                  onTap: () => _updateControlMode('auto'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -522,7 +787,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                 child: _buildNeumorphicButton(
                   label: '🎮 Manual',
                   isSelected: controlMode == 'manual',
-                  onTap: () => setState(() => controlMode = 'manual'),
+                  onTap: () => _updateControlMode('manual'),
                 ),
               ),
             ],
@@ -575,9 +840,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                         child: Switch(
                           value: pumpManual,
                           activeColor: const Color(0xFF4CAF50),
-                          onChanged: (value) {
-                            setState(() => pumpManual = value);
-                          },
+                          onChanged: (value) => _updatePumpStatus(value),
                         ),
                       ),
                     ],
@@ -753,18 +1016,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
           const SizedBox(height: 24),
           _buildGradientButton(
             label: '💾 Save Threshold',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('✅ Threshold saved!'),
-                  backgroundColor: const Color(0xFF4CAF50),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
+            onPressed: _updateThresholds,
           ),
         ],
       ),
@@ -1045,18 +1297,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
           const SizedBox(height: 24),
           _buildGradientButton(
             label: '💾 Save Settings',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('✅ Settings saved!'),
-                  backgroundColor: const Color(0xFF4CAF50),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
+            onPressed: _updateThresholds,
           ),
         ],
       ),
@@ -1094,14 +1335,21 @@ class _SmartControlScreenState extends State<SmartControlScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              const Color(0xFF4CAF50).withOpacity(0.1),
-              const Color(0xFF45a049).withOpacity(0.05),
-            ],
+            colors: isConnected
+                ? [
+                    const Color(0xFF4CAF50).withOpacity(0.1),
+                    const Color(0xFF45a049).withOpacity(0.05),
+                  ]
+                : [
+                    Colors.red.withOpacity(0.1),
+                    Colors.red.withOpacity(0.05),
+                  ],
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFF4CAF50).withOpacity(0.3),
+            color: isConnected
+                ? const Color(0xFF4CAF50).withOpacity(0.3)
+                : Colors.red.withOpacity(0.3),
             width: 1.5,
           ),
         ),
@@ -1112,7 +1360,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                     animation: _pulseAnimation!,
                     builder: (context, child) {
                       return Transform.scale(
-                        scale: _pulseAnimation!.value,
+                        scale: isConnected ? _pulseAnimation!.value : 1.0,
                         child: child,
                       );
                     },
@@ -1124,15 +1372,16 @@ class _SmartControlScreenState extends State<SmartControlScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Connected to ESP32_001',
+                  Text(
+                    isConnected ? '✅ Connected to Firebase' : '❌ Disconnected',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      color: isConnected ? Colors.green[700] : Colors.red[700],
                     ),
                   ),
                   Text(
-                    'Last update: ${TimeOfDay.now().format(context)}',
+                    'Last update: $lastUpdate',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey[600],
@@ -1144,11 +1393,11 @@ class _SmartControlScreenState extends State<SmartControlScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50),
+                color: isConnected ? const Color(0xFF4CAF50) : Colors.red,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
-                Icons.wifi_rounded,
+              child: Icon(
+                isConnected ? Icons.cloud_done : Icons.cloud_off,
                 color: Colors.white,
                 size: 20,
               ),
@@ -1164,11 +1413,13 @@ class _SmartControlScreenState extends State<SmartControlScreen>
       width: 12,
       height: 12,
       decoration: BoxDecoration(
-        color: const Color(0xFF4CAF50),
+        color: isConnected ? const Color(0xFF4CAF50) : Colors.red,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4CAF50).withOpacity(0.5),
+            color: isConnected
+                ? const Color(0xFF4CAF50).withOpacity(0.5)
+                : Colors.red.withOpacity(0.5),
             blurRadius: 8,
             spreadRadius: 2,
           ),

@@ -4,16 +4,6 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -48,6 +38,7 @@ class DefaultFirebaseOptions {
     authDomain: 'smartfarming-a2834.firebaseapp.com',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     measurementId: 'G-3W2NT3BFPP',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -56,6 +47,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '744770451817',
     projectId: 'smartfarming-a2834',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -65,6 +57,7 @@ class DefaultFirebaseOptions {
     projectId: 'smartfarming-a2834',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     iosBundleId: 'com.example.smartFarming',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -74,6 +67,7 @@ class DefaultFirebaseOptions {
     projectId: 'smartfarming-a2834',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     iosBundleId: 'com.example.smartFarming',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
@@ -84,5 +78,6 @@ class DefaultFirebaseOptions {
     authDomain: 'smartfarming-a2834.firebaseapp.com',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     measurementId: 'G-Q73SPQXYJR',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 }
