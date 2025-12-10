@@ -22,7 +22,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   String controlMode = 'auto';
   bool pumpManual = false;
   
-  // Thresholds
+  // Thresholds (Local state untuk slider)
   double thresholdLow = 30;
   double thresholdHigh = 60;
   double maxDuration = 300;
@@ -43,6 +43,10 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   
   // Tab Controller
   TabController? _tabController;
+  
+  // Loading state
+  bool isLoadingSettings = false;
+  String errorMessage = '';
   
   @override
   void initState() {
@@ -86,13 +90,14 @@ class _SmartControlScreenState extends State<SmartControlScreen>
       // Listen to control settings
       _listenToControlSettings();
       
-      // Listen to historical data
+      // Load historical data
       _loadHistoricalData();
       
       if (mounted) {
         setState(() {
           isConnected = true;
           connectionStatus = 'Connected';
+          errorMessage = '';
         });
       }
     } catch (e) {
@@ -101,6 +106,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
         setState(() {
           isConnected = false;
           connectionStatus = 'Connection Error';
+          errorMessage = e.toString();
         });
       }
     }
@@ -127,7 +133,8 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                 humidity = _parseDouble(data['humidity']) ?? 0;
                 soilMoisture = _parseDouble(data['soilMoisture']) ?? 0;
                 lightIntensity = _parseDouble(data['lightIntensity']) ?? 0;
-                lastUpdate = data['timestamp']?.toString() ?? DateTime.now().toString();
+                lastUpdate = data['timestamp']?.toString() ?? 
+                    DateTime.now().toString();
                 
                 // Update soil history
                 if (soilMoisture > 0) {
@@ -139,15 +146,26 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                 
                 isConnected = true;
                 connectionStatus = 'Connected';
+                errorMessage = '';
                 
                 print("✅ Sensor data updated: T=$temperature, H=$humidity, S=$soilMoisture");
               });
             }
           } catch (e) {
             print("❌ Error parsing sensor data: $e");
+            if (mounted) {
+              setState(() {
+                errorMessage = "Error parsing sensor data: $e";
+              });
+            }
           }
         } else {
           print("⚠️ No sensor data available");
+          if (mounted) {
+            setState(() {
+              errorMessage = "No sensor data available";
+            });
+          }
         }
       }, onError: (error) {
         print("❌ Sensor listener error: $error");
@@ -155,11 +173,17 @@ class _SmartControlScreenState extends State<SmartControlScreen>
           setState(() {
             isConnected = false;
             connectionStatus = 'Connection Error';
+            errorMessage = error.toString();
           });
         }
       });
     } catch (e) {
       print("❌ Error setting up sensor listener: $e");
+      if (mounted) {
+        setState(() {
+          errorMessage = "Setup error: $e";
+        });
+      }
     }
   }
   
@@ -180,24 +204,58 @@ class _SmartControlScreenState extends State<SmartControlScreen>
             
             if (mounted) {
               setState(() {
+                // ✅ Update dari Firebase
                 controlMode = data['mode']?.toString() ?? 'auto';
-                pumpManual = data['pumpStatus'] == 'ON' || data['pumpStatus'] == true;
+                pumpManual = data['pumpStatus'] == 'ON' || 
+                    data['pumpStatus'] == true;
                 thresholdLow = _parseDouble(data['thresholdLow']) ?? 30;
                 thresholdHigh = _parseDouble(data['thresholdHigh']) ?? 60;
                 maxDuration = _parseDouble(data['maxDuration']) ?? 300;
                 
+                isLoadingSettings = false;
+                
                 print("✅ Control settings updated");
+                print("   Mode: $controlMode");
+                print("   Pump: ${pumpManual ? 'ON' : 'OFF'}");
+                print("   Threshold Low: $thresholdLow");
+                print("   Threshold High: $thresholdHigh");
               });
             }
           } catch (e) {
             print("❌ Error parsing control settings: $e");
+            if (mounted) {
+              setState(() {
+                isLoadingSettings = false;
+                errorMessage = "Error parsing settings: $e";
+              });
+            }
+          }
+        } else {
+          print("⚠️ No control settings available");
+          if (mounted) {
+            setState(() {
+              isLoadingSettings = false;
+              errorMessage = "No control settings available";
+            });
           }
         }
       }, onError: (error) {
         print("❌ Control settings listener error: $error");
+        if (mounted) {
+          setState(() {
+            isLoadingSettings = false;
+            errorMessage = "Settings error: $error";
+          });
+        }
       });
     } catch (e) {
       print("❌ Error setting up control listener: $e");
+      if (mounted) {
+        setState(() {
+          isLoadingSettings = false;
+          errorMessage = "Setup error: $e";
+        });
+      }
     }
   }
   
@@ -246,6 +304,8 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   // ==================== UPDATE CONTROL MODE ====================
   Future<void> _updateControlMode(String mode) async {
     try {
+      print("🔄 Updating control mode to: $mode");
+      
       await _database
           .child('control')
           .child(selectedDeviceId)
@@ -253,9 +313,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
       
       print("✅ Control mode updated to: $mode");
       
-      if (mounted) {
-        setState(() => controlMode = mode);
-      }
+      _showSuccessSnackbar("Mode changed to ${mode.toUpperCase()}");
     } catch (e) {
       print("❌ Error updating control mode: $e");
       _showErrorSnackbar("Failed to update control mode");
@@ -265,6 +323,8 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   // ==================== UPDATE PUMP STATUS ====================
   Future<void> _updatePumpStatus(bool status) async {
     try {
+      print("🔄 Updating pump status to: ${status ? 'ON' : 'OFF'}");
+      
       await _database
           .child('control')
           .child(selectedDeviceId)
@@ -272,9 +332,9 @@ class _SmartControlScreenState extends State<SmartControlScreen>
       
       print("✅ Pump status updated to: ${status ? 'ON' : 'OFF'}");
       
-      if (mounted) {
-        setState(() => pumpManual = status);
-      }
+      _showSuccessSnackbar(
+        "Pump turned ${status ? 'ON' : 'OFF'}",
+      );
     } catch (e) {
       print("❌ Error updating pump status: $e");
       _showErrorSnackbar("Failed to update pump status");
@@ -284,6 +344,15 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   // ==================== UPDATE THRESHOLDS ====================
   Future<void> _updateThresholds() async {
     try {
+      print("🔄 Updating thresholds...");
+      print("   Low: $thresholdLow");
+      print("   High: $thresholdHigh");
+      print("   Duration: $maxDuration");
+      
+      setState(() {
+        isLoadingSettings = true;
+      });
+      
       await _database
           .child('control')
           .child(selectedDeviceId)
@@ -293,10 +362,22 @@ class _SmartControlScreenState extends State<SmartControlScreen>
             'maxDuration': maxDuration,
           });
       
-      print("✅ Thresholds updated");
-      _showSuccessSnackbar("✅ Threshold saved!");
+      print("✅ Thresholds updated successfully");
+      
+      if (mounted) {
+        setState(() {
+          isLoadingSettings = false;
+        });
+      }
+      
+      _showSuccessSnackbar("✅ Threshold saved successfully!");
     } catch (e) {
       print("❌ Error updating thresholds: $e");
+      if (mounted) {
+        setState(() {
+          isLoadingSettings = false;
+        });
+      }
       _showErrorSnackbar("Failed to save threshold");
     }
   }
@@ -316,6 +397,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
   }
   
   void _showSuccessSnackbar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -324,11 +406,13 @@ class _SmartControlScreenState extends State<SmartControlScreen>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
   
   void _showErrorSnackbar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -337,6 +421,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -375,18 +460,55 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                       const SizedBox(height: 16),
                       _buildConnectionStatus(),
                       const SizedBox(height: 16),
+                      if (errorMessage.isNotEmpty)
+                        _buildErrorBanner(),
+                      const SizedBox(height: 16),
                       _buildSensorGrid(),
                       const SizedBox(height: 16),
                       _buildMiniChart(),
                       const SizedBox(height: 16),
                       _buildTabSection(),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ==================== ERROR BANNER ====================
+  Widget _buildErrorBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.red.withOpacity(0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_rounded, color: Colors.red, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                errorMessage,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -427,7 +549,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
               ),
               SizedBox(height: 4),
               Text(
-                'ESP32_001 • Online',
+                'ESP32_001 • Real-time Sync',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -886,6 +1008,36 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.blue.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_rounded,
+                          color: Colors.blue,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Changes sync to Firebase in real-time',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -953,6 +1105,36 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: Colors.green,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Pump controlled by soil moisture threshold',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1015,8 +1197,38 @@ class _SmartControlScreenState extends State<SmartControlScreen>
           _buildThresholdVisualizer(),
           const SizedBox(height: 24),
           _buildGradientButton(
-            label: '💾 Save Threshold',
-            onPressed: _updateThresholds,
+            label: isLoadingSettings ? '⏳ Saving...' : '💾 Save Threshold',
+            onPressed: isLoadingSettings ? null : _updateThresholds,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.amber.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_rounded,
+                  color: Colors.amber,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tap Save to sync changes to Firebase',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1291,13 +1503,14 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                 _buildSafetyItem('Sensor error detection'),
                 _buildSafetyItem('Hysteresis protection'),
                 _buildSafetyItem('Temperature monitoring'),
+                _buildSafetyItem('Real-time Firebase sync'),
               ],
             ),
           ),
           const SizedBox(height: 24),
           _buildGradientButton(
-            label: '💾 Save Settings',
-            onPressed: _updateThresholds,
+            label: isLoadingSettings ? '⏳ Saving...' : '💾 Save Settings',
+            onPressed: isLoadingSettings ? null : _updateThresholds,
           ),
         ],
       ),
@@ -1381,7 +1594,7 @@ class _SmartControlScreenState extends State<SmartControlScreen>
                     ),
                   ),
                   Text(
-                    'Last update: $lastUpdate',
+                    'Last update: ${lastUpdate.isEmpty ? 'N/A' : lastUpdate}',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey[600],
@@ -1480,22 +1693,26 @@ class _SmartControlScreenState extends State<SmartControlScreen>
 
   Widget _buildGradientButton({
     required String label,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4CAF50), Color(0xFF45a049)],
+        gradient: LinearGradient(
+          colors: onPressed != null
+              ? [const Color(0xFF4CAF50), const Color(0xFF45a049)]
+              : [Colors.grey[400]!, Colors.grey[500]!],
         ),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4CAF50).withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: onPressed != null
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF4CAF50).withOpacity(0.4),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : [],
       ),
       child: Material(
         color: Colors.transparent,
