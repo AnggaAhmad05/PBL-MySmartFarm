@@ -36,9 +36,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '744770451817',
     projectId: 'smartfarming-a2834',
     authDomain: 'smartfarming-a2834.firebaseapp.com',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     measurementId: 'G-3W2NT3BFPP',
-    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -46,8 +46,8 @@ class DefaultFirebaseOptions {
     appId: '1:744770451817:android:34d5a5d250a4582e55e5f8',
     messagingSenderId: '744770451817',
     projectId: 'smartfarming-a2834',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
-    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -55,9 +55,9 @@ class DefaultFirebaseOptions {
     appId: '1:744770451817:ios:a8f61c5665bb60a255e5f8',
     messagingSenderId: '744770451817',
     projectId: 'smartfarming-a2834',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     iosBundleId: 'com.example.smartFarming',
-    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -65,9 +65,9 @@ class DefaultFirebaseOptions {
     appId: '1:744770451817:ios:a8f61c5665bb60a255e5f8',
     messagingSenderId: '744770451817',
     projectId: 'smartfarming-a2834',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     iosBundleId: 'com.example.smartFarming',
-    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
@@ -76,8 +76,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '744770451817',
     projectId: 'smartfarming-a2834',
     authDomain: 'smartfarming-a2834.firebaseapp.com',
+    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'smartfarming-a2834.firebasestorage.app',
     measurementId: 'G-Q73SPQXYJR',
-    databaseURL: 'https://smartfarming-a2834-default-rtdb.asia-southeast1.firebasedatabase.app', // ✅ TAMBAH INI
   );
+
 }
