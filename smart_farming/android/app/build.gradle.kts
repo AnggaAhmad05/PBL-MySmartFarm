@@ -21,16 +21,14 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-    defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.smart_farming"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-    }
+   defaultConfig {
+    applicationId = "com.example.smart_farming"
+    minSdk = flutter.minSdkVersion  // ✅ Set eksplisit (minimal untuk Flutter)
+    targetSdk = 33  // ✅ Set eksplisit
+    versionCode = flutter.versionCode
+    versionName = flutter.versionName
+    multiDexEnabled = true  // ✅ Tambahkan ini
+}
 
     buildTypes {
         release {
@@ -43,4 +41,7 @@ android {
 
 flutter {
     source = "../.."
+}
+dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
 }
